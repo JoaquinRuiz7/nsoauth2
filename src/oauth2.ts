@@ -16,7 +16,6 @@ export class Oauth2 {
     private readonly REVOKE_TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/revoke';
     private readonly GENERIC_AUTHORIZE_URL: string = 'https://system.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly AUTHORIZE_URL: string = 'https://${accountId}.app.netsuite.com/app/login/oauth2/authorize.nl';
-    private readonly REDIRECT_URL: string = 'http://localhost:3000/callback';
     private readonly PLATFORMS: Record<string, string> = {'darwin': 'open', 'win32': 'start'};
     private readonly TOKENS_PATH: string = path.join(os.homedir(), '.nsoauth2', 'tokens.json');
     private readonly TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token';
@@ -25,12 +24,14 @@ export class Oauth2 {
     private readonly scopes: Scope[];
     private readonly clientSecret: string;
     private readonly accountId?: number;
+    private readonly redirectUrl: string;
 
     constructor(config: Config) {
         this.clientId = config.clientId;
         this.scopes = config.scopes;
         this.clientSecret = config.clientSecret;
         this.accountId = config.accountId;
+        this.redirectUrl = config.redirectUrl;
     }
 
     public async getAccessToken(tokenName: string) {
@@ -91,7 +92,7 @@ export class Oauth2 {
 
         searchParams.append('response_type', 'code');
         searchParams.append('client_id', this.clientId);
-        searchParams.append('redirect_uri', this.REDIRECT_URL);
+        searchParams.append('redirect_uri', this.redirectUrl);
         searchParams.append('scope', this.scopes.join(' '));
         searchParams.append('state', this.generateState());
 
@@ -146,7 +147,7 @@ export class Oauth2 {
         const params: Map<string, string> = new Map();
         params.set('code', code);
         params.set('grant_type', GrantType.AUTHORIZATION_TOKEN);
-        params.set('redirect_uri', this.REDIRECT_URL);
+        params.set('redirect_uri', this.redirectUrl);
         params.set('code_verifier', codeVerifier);
 
         try {

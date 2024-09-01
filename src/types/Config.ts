@@ -5,4 +5,5 @@ export interface Config {
     scopes: Scope[];
     clientSecret: string;
     accountId?: number;
+    redirectUrl: string;
 }
