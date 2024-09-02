@@ -12,15 +12,25 @@ To use the library simple create a new NSOAuth2 object instance and pass the con
 as a parameters.
 
 ``` ts
+// Import necessary components from your OAuth2 library
+import { NSOAuth2, Scope } from 'your-oauth2-library';
+
+// Initialize the OAuth2 client with configuration options
 const oauth2Client: NSOAuth2 = new NSOAuth2({
-    clientId: <your_client_id>, // Your NetSuite Client ID
-    clientSecret: <your_client_secret>, // Your NetSuite Client Secret
-    redirectUrl: <your_redirect_url>, // The redirect URL specified in your NetSuite application
-    scopes: [Scope.RESTLETS, Scope.REST_WEB_SERVICES], // Scopes to specify the APIs you wish to access
-    account: <your_account_number>, // Optional: Your NetSuite account number
+    clientId: '<your_client_id>', // NetSuite Client ID
+    clientSecret: '<your_client_secret>', // NetSuite Client Secret
+    redirectUrl: '<your_redirect_url>', // Redirect URL specified in your NetSuite application
+    scopes: [Scope.RESTLETS, Scope.REST_WEB_SERVICES], // Scopes for API access
+    account: '<your_account_number>' // Optional: NetSuite account number
 });
 
-oauth2Client.getAccessToken('foo'); // The parameter is the token name you want to set.
+// Retrieve the access token
+const token: string = oauth2Client.getAccessToken('foo'); // 'foo' is the name of the token you want to set
+
+// Access token is now ready to use
+console.log('Access token:', token);
+
+
 ```
 
 This will complete the OAuth2 flow, retrieve a new access token, and save it under the specified name. Once saved, the

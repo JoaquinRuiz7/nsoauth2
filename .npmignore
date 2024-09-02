@@ -1,0 +1,48 @@
+# Node modules
+node_modules
+
+# Build output
+dist
+
+# TypeScript files
+*.ts
+*.tsx
+*.d.ts
+
+# Logs
+*.log
+
+# Environment files
+.env
+
+# IDE and editor folders
+.vscode
+.idea
+*.swp
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Tests and coverage
+test
+tests
+coverage
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Local configuration files
+*.local
+*.config.js
+
+# npm specific
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Documentation
+README.md
+LICENSE

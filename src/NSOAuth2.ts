@@ -34,19 +34,17 @@ export class NSOAuth2 {
         this.redirectUrl = config.redirectUrl;
     }
 
-    public async getAccessToken(tokenName: string) {
+    public async getAccessToken(tokenName: string): Promise<string> {
         const tokens: Record<string, OAuth2TokenDTO> = this.getTokens();
 
         if (!tokens) {
-            await this.generateAccessToken(tokenName);
-            return;
+            return (await this.generateAccessToken(tokenName)).access_token;
         }
 
         const token: OAuth2TokenDTO = tokens[tokenName];
 
         if (!token) {
-            await this.generateAccessToken(tokenName);
-            return;
+            return (await this.generateAccessToken(tokenName)).access_token;
         }
 
         const isTokenExpired: boolean = this.isAccessTokenExpired(token);
@@ -55,7 +53,7 @@ export class NSOAuth2 {
             return tokens[tokenName].access_token;
         }
 
-        await this.refreshAccessToken(tokenName);
+        return (await this.refreshAccessToken(tokenName)).access_token;
     }
 
     public async revokeRefreshToken(tokenName: string) {
@@ -80,10 +78,10 @@ export class NSOAuth2 {
         return currentTime >= expiresAt;
     }
 
-    private async generateAccessToken(tokenName: string) {
+    private async generateAccessToken(tokenName: string): Promise<OAuth2TokenDTO> {
         const codeVerifier: string = await this.authorizeOAuth2();
         const response: any = await this.startServer();
-        await this.getAuthorizedToken(tokenName, response.company, response.code, codeVerifier);
+        return await this.getAuthorizedToken(tokenName, response.company, response.code, codeVerifier);
     }
 
     private async authorizeOAuth2(): Promise<string> {
@@ -168,7 +166,7 @@ export class NSOAuth2 {
         }
     }
 
-    private async refreshAccessToken(tokenName: string) {
+    private async refreshAccessToken(tokenName: string): Promise<OAuth2TokenDTO> {
         try {
             console.log('Requesting new access token');
 
@@ -185,7 +183,7 @@ export class NSOAuth2 {
             token.issued_at = Date.now();
 
             this.saveToken(tokenName, token);
-
+            return token;
         } catch (e) {
             console.error('Error getting new access token', e);
             throw new Error('Error  refreshing access token');
