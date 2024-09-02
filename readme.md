@@ -24,7 +24,7 @@ const oauth2Client: NSOAuth2 = new NSOAuth2({
 });
 
 // Retrieve the access token
-const token: OAuth2TokenDTO = oauth2Client.getAccessToken('foo'); // 'foo' is the name of the token you want to set
+const token: OAuth2TokenDTO = oauth2Client.generateAccessToken();
 
 // Access token is now ready to use
 console.log('Access token:', token);
