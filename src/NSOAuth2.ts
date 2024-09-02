@@ -12,7 +12,7 @@ import {GrantType} from "./types/GrantType";
 import {Config} from "./types/Config";
 import {Scope} from "./types/Scope";
 
-export class NSOauth2 {
+export class NSOAuth2 {
     private readonly REVOKE_TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/revoke';
     private readonly GENERIC_AUTHORIZE_URL: string = 'https://system.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly AUTHORIZE_URL: string = 'https://${accountId}.app.netsuite.com/app/login/oauth2/authorize.nl';
