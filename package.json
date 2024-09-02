@@ -26,12 +26,8 @@
   ],
   "author": "Joaquin Ruiz",
   "license": "ISC",
-  "dependencies": {
-    "@types/node": "^22.5.2",
-    "axios": "^1.7.7",
-    "crypto": "^1.0.1"
-  },
   "devDependencies": {
+    "@types/node": "^22.5.2",
     "typescript": "^5.5.4"
   },
   "repository": {

@@ -12,7 +12,6 @@ To use the library simple create a new NSOAuth2 object instance and pass the con
 as a parameters.
 
 ``` ts
-// Import necessary components from your OAuth2 library
 import { NSOAuth2, Scope } from 'netsuiteoauth2';
 
 // Initialize the OAuth2 client with configuration options
@@ -25,7 +24,7 @@ const oauth2Client: NSOAuth2 = new NSOAuth2({
 });
 
 // Retrieve the access token
-const token: string = oauth2Client.getAccessToken('foo'); // 'foo' is the name of the token you want to set
+const token: OAuth2TokenDTO = oauth2Client.getAccessToken('foo'); // 'foo' is the name of the token you want to set
 
 // Access token is now ready to use
 console.log('Access token:', token);
@@ -33,18 +32,28 @@ console.log('Access token:', token);
 
 ```
 
-This will complete the OAuth2 flow, retrieve a new access token, and save it under the specified name. Once saved, the
-token will be reused until it expires. No new access token will be requested until the existing one has expired.
+This process will complete the OAuth2 flow and retrieve a new access token. The resulting token DTO contains the
+following information:
 
-To revoke an existing token, use the following method:
+- `account: string;`
+- `access_token: string;`
+- `refresh_token: string;`
+- `expires_in: number;`
+- `issued_at?: number;` (optional)
+
+To obtain a new access token using a refresh token, use the following method:
+
+```ts
+const refreshedToken: OAuth2TokenDTO = oauth2Client.refreshAccessToken(token); // token is type OAuth2TokenDTO
+```
+
+Finally to revoke an token use this method:
 
 ``` ts
-oauth2Client.revokeRefreshToken('foo'); //The parameter is the token name you want to revoke.
+oauth2Client.revokeRefreshToken(token); // token is type OAuth2TokenDTO
 ```
 
 ### Notes
 
-- Token Management: The library automatically handles token expiration and renewal. It will request a new access token
-  when the current one expires.
-- Security: Ensure that sensitive information like clientId, clientSecret, and account is stored securely and not
-  exposed in your codebase.
+- **Security:** Ensure that sensitive information, such as `clientId`, `clientSecret`, and `account`, is stored securely
+  and not exposed in your codebase. Utilize environment variables to safeguard these credentials.

@@ -1,9 +1,8 @@
 import {exec} from "child_process";
+import * as http from "http";
 import {createServer} from "http";
 import {parse} from "node:url";
-import * as crypto from 'crypto';
 import {createHash} from "node:crypto";
-import axios from "axios";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -11,6 +10,7 @@ import {OAuth2TokenDTO} from "./types/OAuth2TokenDTO";
 import {GrantType} from "./types/GrantType";
 import {Config} from "./types/Config";
 import {Scope} from "./types/Scope";
+import * as https from "https";
 
 export class NSOAuth2 {
     private readonly REVOKE_TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/revoke';
@@ -34,42 +34,38 @@ export class NSOAuth2 {
         this.redirectUrl = config.redirectUrl;
     }
 
-    public async getAccessToken(tokenName: string): Promise<string> {
-        const tokens: Record<string, OAuth2TokenDTO> = this.getTokens();
-
-        if (!tokens) {
-            return (await this.generateAccessToken(tokenName)).access_token;
-        }
-
-        const token: OAuth2TokenDTO = tokens[tokenName];
-
-        if (!token) {
-            return (await this.generateAccessToken(tokenName)).access_token;
-        }
-
-        const isTokenExpired: boolean = this.isAccessTokenExpired(token);
-        if (!isTokenExpired) {
-            console.log(`Access token ${tokenName} still valid.`);
-            return tokens[tokenName].access_token;
-        }
-
-        return (await this.refreshAccessToken(tokenName)).access_token;
+    public async generateAccessToken(): Promise<OAuth2TokenDTO> {
+        const codeVerifier: string = await this.authorizeOAuth2();
+        const response: any = await this.startServer();
+        return await this.getAuthorizedToken(response.company, response.code, codeVerifier);
     }
 
-    public async revokeRefreshToken(tokenName: string) {
-        const tokens: Record<string, OAuth2TokenDTO> = this.getTokens();
-        if (!tokens) {
-            console.log('No tokens generated yet.')
-            return;
-        }
+    public async refreshAccessToken(token: OAuth2TokenDTO): Promise<OAuth2TokenDTO> {
+        try {
+            console.log('Requesting new access token');
+            const params: Map<string, string> = new Map();
 
-        const token: OAuth2TokenDTO = tokens[tokenName];
+            params.set('grant_type', GrantType.REFRESH_TOKEN);
+            params.set('refresh_token', token.refresh_token);
+            const response = await this.performPostRequest(token.account, params, this.TOKEN_URL);
+
+
+            token.access_token = response.access_token;
+            token.expires_in = response.expires_in;
+            token.issued_at = Date.now();
+
+            return token;
+        } catch (e) {
+            console.error('Error getting new access token', e);
+            throw new Error('Error  refreshing access token');
+        }
+    }
+
+    public async revokeRefreshToken(token: OAuth2TokenDTO) {
         const params: Map<string, string> = new Map();
         params.set('token', token.refresh_token);
-
         await this.performPostRequest(token.account, params, this.REVOKE_TOKEN_URL);
-        this.deleteToken(tokenName);
-        console.log(`Token ${tokenName} revoked successfully`);
+        console.log(`Token revoked successfully`);
     }
 
     private isAccessTokenExpired(token: OAuth2TokenDTO): boolean {
@@ -78,11 +74,6 @@ export class NSOAuth2 {
         return currentTime >= expiresAt;
     }
 
-    private async generateAccessToken(tokenName: string): Promise<OAuth2TokenDTO> {
-        const codeVerifier: string = await this.authorizeOAuth2();
-        const response: any = await this.startServer();
-        return await this.getAuthorizedToken(tokenName, response.company, response.code, codeVerifier);
-    }
 
     private async authorizeOAuth2(): Promise<string> {
         const url: URL = new URL(this.accountId ? this.AUTHORIZE_URL.replace('${accountId}', this.accountId + '') : this.GENERIC_AUTHORIZE_URL);
@@ -92,7 +83,7 @@ export class NSOAuth2 {
         searchParams.append('client_id', this.clientId);
         searchParams.append('redirect_uri', this.redirectUrl);
         searchParams.append('scope', this.scopes.join(' '));
-        searchParams.append('state', this.generateState());
+        searchParams.append('state', this.generateRandomHex());
 
         const codeVerifier = this.generateCodeVerifier();
         const codeChallenge = this.generateCodeChallenge(codeVerifier);
@@ -122,25 +113,49 @@ export class NSOAuth2 {
         const credentials: string = `${this.clientId}:${this.clientSecret}`;
         const encodedCredentials: string = Buffer.from(credentials).toString('base64');
 
-        try {
-            return await axios.post(
-                url.replace('${accountId}', accountId),
-                urlParams.toString(),
-                {
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Authorization': `Basic ${encodedCredentials}`
+        const urlWithAccountId = url.replace('${accountId}', accountId);
+        const urlObj = new URL(urlWithAccountId);
+        const isHttps = urlObj.protocol === 'https:';
+        const options = {
+            hostname: urlObj.hostname,
+            path: urlObj.pathname + urlObj.search,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${encodedCredentials}`,
+            },
+        };
+
+        return new Promise((resolve, reject) => {
+            const req = (isHttps ? https : http).request(options, (res) => {
+                let data = '';
+
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+
+                res.on('end', () => {
+                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(JSON.parse(data));
+                    } else {
+                        reject(new Error(`POST request failed with status code ${res.statusCode}: ${data}`));
                     }
-                }
-            );
-        } catch (error) {
-            console.error('Error performing POST request:', error.response?.data || error.message);
-            console.log(`Data: \n ${urlParams}`)
-            throw new Error('POST request failed');
-        }
+                });
+            });
+
+            req.on('error', (error) => {
+                console.error('Error performing POST request:', error.message);
+                console.log(`Data: \n ${urlParams}`);
+                reject(new Error('POST request failed'));
+            });
+
+            // Write the URL parameters to the request body
+            req.write(urlParams.toString());
+            req.end();
+        });
     }
 
-    private async getAuthorizedToken(tokenName: string, account: string, code: string, codeVerifier: string): Promise<OAuth2TokenDTO> {
+    private async getAuthorizedToken(account: string, code: string, codeVerifier: string): Promise<OAuth2TokenDTO> {
 
         const params: Map<string, string> = new Map();
         params.set('code', code);
@@ -150,49 +165,29 @@ export class NSOAuth2 {
 
         try {
             const response = await this.performPostRequest(account, params, this.TOKEN_URL);
-            const token: OAuth2TokenDTO = {
+            console.log(response);
+            return {
                 account: account,
-                access_token: response.data.access_token,
-                refresh_token: response.data.refresh_token,
-                expires_in: response.data.expires_in,
+                access_token: response.access_token,
+                refresh_token: response.refresh_token,
+                expires_in: response.expires_in,
                 issued_at: Date.now()
-            };
-
-            this.saveToken(tokenName, token)
-            return token
+            }
         } catch (error) {
             console.error('Error exchanging code for token:', error);
             throw new Error('Error getting oauth2 refresh token');
         }
     }
 
-    private async refreshAccessToken(tokenName: string): Promise<OAuth2TokenDTO> {
-        try {
-            console.log('Requesting new access token');
-
-            const token: OAuth2TokenDTO = this.getTokens()[tokenName];
-            const params: Map<string, string> = new Map();
-
-            params.set('grant_type', GrantType.REFRESH_TOKEN);
-            params.set('refresh_token', token.refresh_token);
-            const response = await this.performPostRequest(token.account, params, this.TOKEN_URL);
-
-
-            token.access_token = response.data.access_token;
-            token.expires_in = response.data.expires_in;
-            token.issued_at = Date.now();
-
-            this.saveToken(tokenName, token);
-            return token;
-        } catch (e) {
-            console.error('Error getting new access token', e);
-            throw new Error('Error  refreshing access token');
+    private generateRandomHex(length: number = 22): string {
+        const hexChars = '0123456789abcdef';
+        let result = '';
+        for (let i = 0; i < length * 2; i++) {
+            result += hexChars[Math.floor(Math.random() * hexChars.length)];
         }
+        return result;
     }
 
-    private generateState(length: number = 22): string {
-        return crypto.randomBytes(length).toString('hex');
-    }
 
     private generateCodeVerifier(): string {
         const length: number = Math.floor(Math.random() * (128 - 43 + 1)) + 43;
@@ -251,13 +246,6 @@ export class NSOAuth2 {
         return this.PLATFORMS[process.platform] || 'xdg-open';
     }
 
-    private ensureDirectoryExists(filePath: string): void {
-        const directory = path.dirname(filePath);
-        if (!fs.existsSync(directory)) {
-            fs.mkdirSync(directory, {recursive: true});
-        }
-    }
-
     private getTokens(): Record<string, OAuth2TokenDTO> | null {
         try {
             if (fs.existsSync(this.TOKENS_PATH)) {
@@ -268,40 +256,6 @@ export class NSOAuth2 {
         } catch (error) {
             console.error('Error reading tokens file:', error);
             return null;
-        }
-    }
-
-    private saveToken(name: string, content: OAuth2TokenDTO): void {
-        try {
-            this.ensureDirectoryExists(this.TOKENS_PATH);
-
-            const tokens: Record<string, OAuth2TokenDTO> = this.getTokens() || {};
-            tokens[name] = content;
-
-            fs.writeFileSync(this.TOKENS_PATH, JSON.stringify(tokens, null, 2), {mode: 0o700});
-            console.log(`Token saved under the name "${name}".`);
-        } catch (error) {
-            console.error('Error saving token:', error);
-        }
-    }
-
-    private deleteToken(name: string): void {
-        try {
-            this.ensureDirectoryExists(this.TOKENS_PATH);
-
-            const tokens: Record<string, OAuth2TokenDTO> = this.getTokens() || {};
-
-            if (tokens[name]) {
-                delete tokens[name];
-
-                fs.writeFileSync(this.TOKENS_PATH, JSON.stringify(tokens, null, 2), {mode: 0o700});
-                console.log(`Token "${name}" deleted.`);
-            } else {
-                console.log(`Token "${name}" not found.`);
-            }
-        } catch (error) {
-            console.error('Error deleting token:', error);
-            throw new Error('Token deletion failed');
         }
     }
 
