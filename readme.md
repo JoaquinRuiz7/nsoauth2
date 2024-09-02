@@ -39,7 +39,7 @@ following information:
 - `access_token: string;`
 - `refresh_token: string;`
 - `expires_in: number;`
-- `issued_at?: number;` (optional)
+- `issued_at: number;`
 
 To obtain a new access token using a refresh token, use the following method:
 
