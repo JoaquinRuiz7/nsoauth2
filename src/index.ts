@@ -1,5 +1,6 @@
 import {NSOAuth2} from './NSOAuth2';
-import {OAuth2TokenDTO, Scope} from './types/Scope';
+import {Scope} from './types/Scope';
+import {OAuth2TokenDTO} from "./types/OAuth2TokenDTO";
 
 export {
     NSOAuth2,
