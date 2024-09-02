@@ -8,11 +8,14 @@
     "skipLibCheck": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "sourceMap": true
+    "sourceMap": true,
+    "declaration": true,
+    // Generate .d.ts files
+    "declarationMap": true
+    // Generate .d.ts.map files for debugging
   },
   "include": [
-    "src/**/*.ts",
-    "index.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
