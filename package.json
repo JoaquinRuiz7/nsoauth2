@@ -1,12 +1,23 @@
 {
-  "name": "nsoauth2",
+  "name": "netsuite-oauth2",
   "version": "1.0.0",
-  "description": "",
+  "description": "An easy to use OAuth2 authentication for Netsuite.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "netsuite",
+    "oauth2",
+    "authentication",
+    "suitecloud",
+    "restlet",
+    "netsuite-api",
+    "integration",
+    "sdk",
+    "api-client",
+    "nodejs"
+  ],
   "author": "Joaquin Ruiz",
   "license": "ISC",
   "dependencies": {
@@ -16,5 +27,13 @@
   },
   "devDependencies": {
     "typescript": "^5.5.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoaquinRuiz7/nsoauth2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JoaquinRuiz7/nsoauth2/issues"
+  },
+  "homepage": "https://github.com/JoaquinRuiz7/nsoauth2#readme"
 }
