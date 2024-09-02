@@ -13,7 +13,7 @@ as a parameters.
 
 ``` ts
 // Import necessary components from your OAuth2 library
-import { NSOAuth2, Scope } from 'your-oauth2-library';
+import { NSOAuth2, Scope } from 'netsuiteoauth2';
 
 // Initialize the OAuth2 client with configuration options
 const oauth2Client: NSOAuth2 = new NSOAuth2({
