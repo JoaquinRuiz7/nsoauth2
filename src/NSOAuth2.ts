@@ -165,7 +165,6 @@ export class NSOAuth2 {
 
         try {
             const response = await this.performPostRequest(account, params, this.TOKEN_URL);
-            console.log(response);
             return {
                 account: account,
                 access_token: response.access_token,
