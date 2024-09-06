@@ -4,6 +4,6 @@ export interface Config {
     clientId: string;
     scopes: Scope[];
     clientSecret: string;
-    accountId?: number;
+    accountId?: string;
     redirectUrl: string;
 }

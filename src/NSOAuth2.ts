@@ -19,7 +19,7 @@ export class NSOAuth2 {
     private readonly clientId: string;
     private readonly scopes: Scope[];
     private readonly clientSecret: string;
-    private readonly accountId?: number;
+    private readonly accountId?: string;
     private readonly redirectUrl: string;
 
     constructor(config: Config) {
@@ -103,11 +103,12 @@ export class NSOAuth2 {
         const encodedCredentials: string = Buffer.from(credentials).toString('base64');
 
         const urlWithAccountId = url.replace('${accountId}', accountId);
-        const urlObj = new URL(urlWithAccountId);
-        const isHttps = urlObj.protocol === 'https:';
+        const urlAux: URL = new URL(urlWithAccountId);
+        const isHttps: boolean = urlAux.protocol === 'https:';
+        const path: string = urlAux.pathname + (urlAux.search ? encodeURI(urlAux.search) : '')
         const options = {
-            hostname: urlObj.hostname,
-            path: urlObj.pathname + urlObj.search,
+            hostname: urlAux.hostname,
+            path,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
