@@ -16,7 +16,7 @@ export class NSOAuth2 {
     private readonly REVOKE_TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/revoke';
     private readonly GENERIC_AUTHORIZE_URL: string = 'https://system.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly AUTHORIZE_URL: string = 'https://${accountId}.app.netsuite.com/app/login/oauth2/authorize.nl';
-    private readonly PLATFORMS: Record<string, string> = {'darwin': 'open', 'win32': 'start'};
+    private readonly PLATFORMS: Record<string, string> = {'darwin': 'open', 'win32': 'start ""'};
     private readonly TOKENS_PATH: string = path.join(os.homedir(), '.nsoauth2', 'tokens.json');
     private readonly TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token';
 
@@ -149,7 +149,6 @@ export class NSOAuth2 {
                 reject(new Error('POST request failed'));
             });
 
-            // Write the URL parameters to the request body
             req.write(urlParams.toString());
             req.end();
         });
@@ -211,8 +210,8 @@ export class NSOAuth2 {
         return new Promise((resolve, reject) => {
             const server = createServer((req, res) => {
                 const {pathname, query} = parse(req.url || '', true);
-
-                if (pathname === '/callback') {
+                const url: URL = new URL(this.redirectUrl);
+                if (pathname === url.pathname) {
                     const receivedCode: string = query.code as string;
                     const company: string = query.company as string;
 
