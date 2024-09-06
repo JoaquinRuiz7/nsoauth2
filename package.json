@@ -1,6 +1,6 @@
 {
   "name": "netsuiteoauth2",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "An easy-to-use OAuth2 authentication for NetSuite.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
