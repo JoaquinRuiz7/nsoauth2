@@ -20,7 +20,7 @@ const oauth2Client: NSOAuth2 = new NSOAuth2({
     clientSecret: '<your_client_secret>', // NetSuite Client Secret
     redirectUrl: '<your_redirect_url>', // Redirect URL specified in your NetSuite application
     scopes: [Scope.RESTLETS, Scope.REST_WEB_SERVICES], // Scopes for API access
-    account: '<your_account_number>' // Optional: NetSuite account number
+    account: '<your_account_id>' // Optional: NetSuite account id
 });
 
 // Retrieve the access token
