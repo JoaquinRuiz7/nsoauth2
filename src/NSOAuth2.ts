@@ -3,9 +3,6 @@ import * as http from "http";
 import {createServer} from "http";
 import {parse} from "node:url";
 import {createHash} from "node:crypto";
-import fs from "fs";
-import path from "path";
-import os from "os";
 import {OAuth2TokenDTO} from "./types/OAuth2TokenDTO";
 import {GrantType} from "./types/GrantType";
 import {Config} from "./types/Config";
@@ -17,7 +14,6 @@ export class NSOAuth2 {
     private readonly GENERIC_AUTHORIZE_URL: string = 'https://system.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly AUTHORIZE_URL: string = 'https://${accountId}.app.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly PLATFORMS: Record<string, string> = {'darwin': 'open', 'win32': 'start ""'};
-    private readonly TOKENS_PATH: string = path.join(os.homedir(), '.nsoauth2', 'tokens.json');
     private readonly TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token';
 
     private readonly clientId: string;
@@ -67,13 +63,6 @@ export class NSOAuth2 {
         await this.performPostRequest(token.account, params, this.REVOKE_TOKEN_URL);
         console.log(`Token revoked successfully`);
     }
-
-    private isAccessTokenExpired(token: OAuth2TokenDTO): boolean {
-        const currentTime: number = Date.now();
-        const expiresAt: number = token.issued_at + (token.expires_in * 1000);
-        return currentTime >= expiresAt;
-    }
-
 
     private async authorizeOAuth2(): Promise<string> {
         const url: URL = new URL(this.accountId ? this.AUTHORIZE_URL.replace('${accountId}', this.accountId + '') : this.GENERIC_AUTHORIZE_URL);
@@ -242,19 +231,6 @@ export class NSOAuth2 {
 
     private getOpenCommand(): string {
         return this.PLATFORMS[process.platform] || 'xdg-open';
-    }
-
-    private getTokens(): Record<string, OAuth2TokenDTO> | null {
-        try {
-            if (fs.existsSync(this.TOKENS_PATH)) {
-                const data = fs.readFileSync(this.TOKENS_PATH, 'utf8');
-                return JSON.parse(data);
-            }
-            return {};
-        } catch (error) {
-            console.error('Error reading tokens file:', error);
-            return null;
-        }
     }
 
 }
