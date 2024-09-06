@@ -208,9 +208,9 @@ export class NSOAuth2 {
 
     private async startServer(): Promise<unknown> {
         return new Promise((resolve, reject) => {
+            const url: URL = new URL(this.redirectUrl);
             const server = createServer((req, res) => {
                 const {pathname, query} = parse(req.url || '', true);
-                const url: URL = new URL(this.redirectUrl);
                 if (pathname === url.pathname) {
                     const receivedCode: string = query.code as string;
                     const company: string = query.company as string;
@@ -234,8 +234,8 @@ export class NSOAuth2 {
                 }
             });
 
-            server.listen(3000, () => {
-                console.log('Server listening on http://localhost:3000');
+            server.listen(url.port, () => {
+                console.log(`Server listening on ${this.redirectUrl}`);
             });
         });
     }
