@@ -235,7 +235,7 @@ export class NSOAuth2 {
             });
 
             server.listen(url.port, () => {
-                console.log(`Server listening on ${this.redirectUrl}`);
+                console.log(`Server listening on port ${url.port}`);
             });
         });
     }
