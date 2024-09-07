@@ -225,7 +225,7 @@ export class NSOAuth2 {
             });
 
             server.listen(url.port ? url.port : 80, () => {
-                console.log(`Server listening on port ${url.port}`);
+                console.log(`Server listening on port ${url.port ? url.port : 80}`);
             });
         });
     }
