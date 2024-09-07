@@ -38,7 +38,6 @@ export class NSOAuth2 {
 
     public async refreshAccessToken(token: OAuth2TokenDTO): Promise<OAuth2TokenDTO> {
         try {
-            console.log('Requesting new access token');
             const params: Map<string, string> = new Map();
 
             params.set('grant_type', GrantType.REFRESH_TOKEN);
@@ -52,7 +51,6 @@ export class NSOAuth2 {
 
             return token;
         } catch (e) {
-            console.error('Error getting new access token', e);
             throw new Error('Error  refreshing access token');
         }
     }
@@ -61,7 +59,6 @@ export class NSOAuth2 {
         const params: Map<string, string> = new Map();
         params.set('token', token.refresh_token);
         await this.performPostRequest(token.account, params, this.REVOKE_TOKEN_URL);
-        console.log(`Token revoked successfully`);
     }
 
     private async authorizeOAuth2(): Promise<string> {
@@ -85,10 +82,9 @@ export class NSOAuth2 {
         const fullCommand: string = `${command} "${url.toString()}"`;
 
         exec(fullCommand).on('error', (err) => {
-            console.error('Error opening browser:', err);
+            throw new Error('Error opening browser:');
         });
 
-        console.log('Please authorize the token in your browser.');
         return codeVerifier;
     }
 
@@ -134,8 +130,6 @@ export class NSOAuth2 {
             });
 
             req.on('error', (error) => {
-                console.error('Error performing POST request:', error.message);
-                console.log(`Data: \n ${urlParams}`);
                 reject(new Error('POST request failed'));
             });
 
@@ -162,7 +156,6 @@ export class NSOAuth2 {
                 issued_at: Date.now()
             }
         } catch (error) {
-            console.error('Error exchanging code for token:', error);
             throw new Error('Error getting oauth2 refresh token');
         }
     }
@@ -225,7 +218,6 @@ export class NSOAuth2 {
             });
 
             server.listen(url.port ? url.port : 80, () => {
-                console.log(`Server listening on port ${url.port ? url.port : 80}`);
             });
         });
     }
