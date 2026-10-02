@@ -1,7 +1,4 @@
-import {exec} from "child_process";
 import * as http from "http";
-import {createServer} from "http";
-import {parse} from "node:url";
 import {createHash} from "node:crypto";
 import {OAuth2TokenDTO} from "./types/OAuth2TokenDTO";
 import {GrantType} from "./types/GrantType";
@@ -13,7 +10,6 @@ export class NSOAuth2 {
     private readonly REVOKE_TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/revoke';
     private readonly GENERIC_AUTHORIZE_URL: string = 'https://system.netsuite.com/app/login/oauth2/authorize.nl';
     private readonly AUTHORIZE_URL: string = 'https://${accountId}.app.netsuite.com/app/login/oauth2/authorize.nl';
-    private readonly PLATFORMS: Record<string, string> = {'darwin': 'open', 'win32': 'start ""'};
     private readonly TOKEN_URL: string = 'https://${accountId}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token';
 
     private readonly clientId: string;
@@ -30,10 +26,30 @@ export class NSOAuth2 {
         this.redirectUrl = config.redirectUrl;
     }
 
-    public async generateAccessToken(): Promise<OAuth2TokenDTO> {
-        const codeVerifier: string = await this.authorizeOAuth2();
-        const response: any = await this.startServer();
-        return await this.getAuthorizedToken(response.company, response.code, codeVerifier);
+    /**
+     * Step 1: builds the authorization URL.
+     * Open it anywhere, then pass the `code` and `company` from the redirect to `exchangeAuthorizationCode`.
+     */
+    public getAuthorizationUrl(): { url: string, codeVerifier: string, state: string } {
+        return this.buildAuthorizationRequest();
+    }
+
+    /** Step 2: exchanges an authorization code for tokens. */
+    public async exchangeAuthorizationCode(account: string, code: string, codeVerifier: string): Promise<OAuth2TokenDTO> {
+        return await this.getAuthorizedToken(account, code, codeVerifier);
+    }
+
+    /**
+     * Gets a fresh access token from a refresh token obtained once and kept as a secret.
+     */
+    public async accessTokenFromRefreshToken(account: string, refreshToken: string): Promise<OAuth2TokenDTO> {
+        return await this.refreshAccessToken({
+            account,
+            access_token: '',
+            refresh_token: refreshToken,
+            expires_in: 0,
+            issued_at: 0
+        });
     }
 
     public async refreshAccessToken(token: OAuth2TokenDTO): Promise<OAuth2TokenDTO> {
@@ -61,15 +77,16 @@ export class NSOAuth2 {
         await this.performPostRequest(token.account, params, this.REVOKE_TOKEN_URL);
     }
 
-    private async authorizeOAuth2(): Promise<string> {
+    private buildAuthorizationRequest(): { url: string, codeVerifier: string, state: string } {
         const url: URL = new URL(this.accountId ? this.AUTHORIZE_URL.replace('${accountId}', this.accountId + '') : this.GENERIC_AUTHORIZE_URL);
         const searchParams: URLSearchParams = new URLSearchParams();
+        const state: string = this.generateRandomHex();
 
         searchParams.append('response_type', 'code');
         searchParams.append('client_id', this.clientId);
         searchParams.append('redirect_uri', this.redirectUrl);
         searchParams.append('scope', this.scopes.join(' '));
-        searchParams.append('state', this.generateRandomHex());
+        searchParams.append('state', state);
 
         const codeVerifier = this.generateCodeVerifier();
         const codeChallenge = this.generateCodeChallenge(codeVerifier);
@@ -78,14 +95,7 @@ export class NSOAuth2 {
         searchParams.append('code_challenge_method', 'S256');
 
         url.search = searchParams.toString();
-        const command: string = this.getOpenCommand();
-        const fullCommand: string = `${command} "${url.toString()}"`;
-
-        exec(fullCommand).on('error', (err) => {
-            throw new Error('Error opening browser:');
-        });
-
-        return codeVerifier;
+        return {url: url.toString(), codeVerifier, state};
     }
 
     private async performPostRequest(accountId: string, params: Map<string, string>, url: string): Promise<any> {
@@ -187,43 +197,6 @@ export class NSOAuth2 {
         return createHash('sha256')
             .update(codeVerifier)
             .digest('base64url');
-    }
-
-    private async startServer(): Promise<unknown> {
-        return new Promise((resolve, reject) => {
-            const url: URL = new URL(this.redirectUrl);
-            const server = createServer((req, res) => {
-                const {pathname, query} = parse(req.url || '', true);
-                if (pathname === url.pathname) {
-                    const receivedCode: string = query.code as string;
-                    const company: string = query.company as string;
-
-                    if (receivedCode) {
-                        res.writeHead(200, {'Content-Type': 'text/plain'});
-                        res.end('Authorization successful. You can close this window.');
-                        server.close();
-                        resolve({
-                            code: receivedCode.trim(),
-                            company: company.trim()
-                        });
-                    } else {
-                        res.writeHead(400, {'Content-Type': 'text/plain'});
-                        res.end('Authorization code not found.');
-                        reject(new Error('Authorization code not found.'));
-                    }
-                } else {
-                    res.writeHead(404, {'Content-Type': 'text/plain'});
-                    res.end('Not Found');
-                }
-            });
-
-            server.listen(url.port ? url.port : 80, () => {
-            });
-        });
-    }
-
-    private getOpenCommand(): string {
-        return this.PLATFORMS[process.platform] || 'xdg-open';
     }
 
 }

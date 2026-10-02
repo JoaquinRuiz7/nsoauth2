@@ -8,32 +8,34 @@ analytics.
 
 ### How to use
 
-To use the library simple create a new NSOAuth2 object instance and pass the config
-as a parameters.
+Create an `NSOAuth2` instance with your config. The library never opens a browser or starts a server, so it works the
+same on a laptop, a server or CI.
 
 ``` ts
-import { NSOAuth2, Scope } from 'netsuiteoauth2';
+import { NSOAuth2, Scope, OAuth2TokenDTO } from 'netsuiteoauth2';
 
-// Initialize the OAuth2 client with configuration options
 const oauth2Client: NSOAuth2 = new NSOAuth2({
     clientId: '<your_client_id>', // NetSuite Client ID
     clientSecret: '<your_client_secret>', // NetSuite Client Secret
     redirectUrl: '<your_redirect_url>', // Redirect URL specified in your NetSuite application
     scopes: [Scope.RESTLETS, Scope.REST_WEB_SERVICES], // Scopes for API access
-    account: '<your_account_id>' // Optional: NetSuite account id
+    accountId: '<your_account_id>' // Optional: NetSuite account id
 });
-
-// Retrieve the access token
-const token: OAuth2TokenDTO = oauth2Client.generateAccessToken();
-
-// Access token is now ready to use
-console.log('Access token:', token);
-
-
 ```
 
-This process will complete the OAuth2 flow and retrieve a new access token. The resulting token DTO contains the
-following information:
+#### 1. Authorization code flow (PKCE)
+
+``` ts
+// Step 1: build the authorization URL. Keep codeVerifier (and state) for step 2.
+const { url, codeVerifier, state } = oauth2Client.getAuthorizationUrl();
+// redirect the user to `url`
+
+// Step 2: in your redirect handler, check that the `state` query param matches, then exchange the code.
+// `code` and `company` (the account id) are query params of the redirect.
+const token: OAuth2TokenDTO = await oauth2Client.exchangeAuthorizationCode(company, code, codeVerifier);
+```
+
+The resulting token DTO contains:
 
 - `account: string;`
 - `access_token: string;`
@@ -41,16 +43,20 @@ following information:
 - `expires_in: number;`
 - `issued_at: number;`
 
-To obtain a new access token using a refresh token, use the following method:
+#### 2. Refresh tokens (CI / servers)
+
+Authorize once, store the `refresh_token` as a secret, and get access tokens from it without any interaction:
 
 ```ts
-const refreshedToken: OAuth2TokenDTO = oauth2Client.refreshAccessToken(token); // token is type OAuth2TokenDTO
+const token: OAuth2TokenDTO = await oauth2Client.accessTokenFromRefreshToken(account, refreshToken);
+// or, with an existing token DTO:
+const refreshed: OAuth2TokenDTO = await oauth2Client.refreshAccessToken(token);
 ```
 
-Finally to revoke an token use this method:
+#### 3. Revoke
 
 ``` ts
-oauth2Client.revokeRefreshToken(token); // token is type OAuth2TokenDTO
+await oauth2Client.revokeRefreshToken(token);
 ```
 
 ### Notes
